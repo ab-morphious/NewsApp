@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">NewsApp</string>
+    <string name="unkown_error">Unknown error occurred!</string>
+    <string name="full_article">Full Article</string>
+    <string name="share">Share</string>
+    <string name="news_detail_image">news detail image</string>
+    <string name="front_page">Front Page</string>
+</resources>
