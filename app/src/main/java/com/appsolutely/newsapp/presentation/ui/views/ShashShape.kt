@@ -12,8 +12,8 @@ class BottomRightSlashShape(private val cutSize: Float) : Shape {
         return Outline.Generic(Path().apply {
             moveTo(0f, 0f)
             lineTo(size.width, 0f)
-            lineTo(size.width, size.height - cutSize) // Bottom-right cut start
-            lineTo(size.width - cutSize, size.height) // Diagonal cut
+            lineTo(size.width, size.height - cutSize)
+            lineTo(size.width - cutSize, size.height)
             lineTo(0f, size.height)
             close()
         })

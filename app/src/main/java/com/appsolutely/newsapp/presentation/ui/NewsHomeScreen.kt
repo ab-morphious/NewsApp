@@ -54,10 +54,6 @@ fun NewsScreen(viewModel: NewsViewModel, navController: NavHostController) {
     val lazyListState = rememberLazyListState()
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
-    LaunchedEffect(viewModel) {
-        viewModel.getNews("tesla", "2025-02-08", "publishedAt")
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
         when (newsState) {
             is NewsUiState.Loading -> NewsLoading()
@@ -65,13 +61,13 @@ fun NewsScreen(viewModel: NewsViewModel, navController: NavHostController) {
                 val newsList = (newsState as NewsUiState.Success).news
                 NewsList(newsList, lazyListState, navController)
             }
-
             is NewsUiState.Error -> NewsError((newsState as NewsUiState.Error).message)
         }
 
+        val isScrolled by remember { derivedStateOf { lazyListState.firstVisibleItemScrollOffset > 0 } }
         val appBarWidth by animateDpAsState(
-            targetValue = if (lazyListState.firstVisibleItemScrollOffset > 0) 100.dp else screenWidth,
-            label = ""
+            targetValue = if (isScrolled) 100.dp else screenWidth,
+            label = "appBarWidth"
         )
 
         NewsAppBar(
@@ -106,15 +102,17 @@ fun NewsError(message: String) {
 @Composable
 fun NewsList(newsList: List<News>, lazyListState: LazyListState, navController: NavHostController) {
     val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-
+    val headerPadding = remember {
+        derivedStateOf { lazyListState.firstVisibleItemScrollOffset }
+    }
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp)
             .padding(
                 top =
-                if (remember { derivedStateOf { lazyListState.firstVisibleItemScrollOffset } }.value == 0)
-                    (statusBarHeight + 60.dp)
+                if (headerPadding.value == 0)
+                    statusBarHeight + 60.dp
                 else
                     statusBarHeight
             ),

@@ -21,17 +21,23 @@ class NewsViewModel @Inject constructor(
 
     private val _newsList = mutableStateOf<List<News>>(emptyList())
 
+    init {
+        getNews("Messi", "2025-14-09", "publishedAt")
+    }
+
     fun getNews(query: String, from: String, sortBy: String) {
         viewModelScope.launch {
             _newsState.value = NewsUiState.Loading
 
             val result = getNewsUseCase(query, from, sortBy)
 
-            _newsState.value = if (result.isSuccess()) {
-                _newsList.value = result.getOrDefault(emptyList())
-                NewsUiState.Success(result.getOrDefault(emptyList()))
-            } else {
-                NewsUiState.Error(result.exceptionOrNull()?.localizedMessage.orEmpty())
+            if(result != null) {
+                _newsState.value = if (result.isSuccess()) {
+                    _newsList.value = result.getOrDefault(emptyList())
+                    NewsUiState.Success(result.getOrDefault(emptyList()))
+                } else {
+                    NewsUiState.Error(result.exceptionOrNull()?.localizedMessage.orEmpty())
+                }
             }
         }
     }
