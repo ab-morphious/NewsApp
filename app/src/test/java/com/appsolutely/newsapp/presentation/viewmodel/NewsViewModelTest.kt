@@ -147,6 +147,7 @@ class NewsViewModelTest {
                 ))
         }
 
+        viewModel.getNews(testQuery, testDate, testSortBy)
         testDispatcher.scheduler.advanceUntilIdle()
 
         val state = viewModel.newsState.first()
