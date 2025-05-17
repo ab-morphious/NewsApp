@@ -175,6 +175,6 @@ class NewsViewModelTest {
         assertEquals(NewsUiState.Loading, emittedStates[0])
         assertEquals(NewsUiState.Error("Unkown error"), emittedStates[1])
 
-        job.cancel() // cleanup
+        job.cancel()
     }
 } 
