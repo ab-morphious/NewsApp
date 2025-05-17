@@ -8,7 +8,11 @@ import com.appsolutely.newsapp.domain.usecase.GetNewsUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -17,8 +21,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.doAnswer
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NewsViewModelTest {
@@ -125,9 +131,50 @@ class NewsViewModelTest {
         // When
         viewModel.getNews(testQuery, testDate, testSortBy)
         testDispatcher.scheduler.advanceUntilIdle()
-        val result = viewModel.getNewsByUrl(mockNews.last().hashCode()) // Non-existent ID
+        val result = viewModel.getNewsByUrl(-1) // Non-existent ID
 
         // Then
         assertEquals(null, result)
+    }
+
+    @Test
+    fun `getNews shoud show error state if not success`() = runTest {
+        runBlocking {
+            whenever (getNewsUseCase.invoke(testQuery, testDate, testSortBy))
+                .thenReturn (Result.Error(
+                    errorType = ErrorType.UnknownError,
+                    message = "Something went wrong"
+                ))
+        }
+
+        val result = viewModel.getNews(testQuery, testDate, testSortBy)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val state = viewModel.newsState.first()
+        assert(state is NewsUiState.Error)
+        assertEquals("Something went wrong", (state as NewsUiState.Error).message)
+    }
+
+    @Test
+    fun `should emit Loading and then Error when result fails`() = runTest {
+        // Given: a mocked use case that returns an error
+        whenever(getNewsUseCase("Messi", "2025-14-09", "publishedAt"))
+            .thenReturn(Result.Error(ErrorType.UnknownError, "Unkown error"))
+
+        // When: collect emissions
+        val emittedStates = mutableListOf<NewsUiState>()
+        val job = launch {
+            val viewModel = NewsViewModel(getNewsUseCase)
+            viewModel.newsState.toList(emittedStates)
+        }
+
+        // Give time for emissions
+        advanceUntilIdle()
+
+        // Then: check states
+        assertEquals(NewsUiState.Loading, emittedStates[0])
+        assertEquals(NewsUiState.Error("Unkown error"), emittedStates[1])
+
+        job.cancel() // cleanup
     }
 } 
