@@ -157,7 +157,7 @@ class NewsViewModelTest {
 
     @Test
     fun `should emit Loading and then Error when result fails`() = runTest {
-        // Given: a mocked use case that returns an error
+
         whenever(getNewsUseCase("Messi", "2025-14-09", "publishedAt"))
             .thenReturn(Result.Error(ErrorType.UnknownError, "Unkown error"))
 
@@ -171,6 +171,7 @@ class NewsViewModelTest {
         // Give time for emissions
         advanceUntilIdle()
 
+        // Then: check states
         assertEquals(NewsUiState.Loading, emittedStates[0])
         assertEquals(NewsUiState.Error("Unkown error"), emittedStates[1])
 
