@@ -171,7 +171,6 @@ class NewsViewModelTest {
         // Give time for emissions
         advanceUntilIdle()
 
-        // Then: check states
         assertEquals(NewsUiState.Loading, emittedStates[0])
         assertEquals(NewsUiState.Error("Unkown error"), emittedStates[1])
 
