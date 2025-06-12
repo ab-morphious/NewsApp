@@ -1,6 +1,8 @@
 package com.appsolutely.newsapp.presentation.ui
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -35,6 +37,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
@@ -48,7 +51,10 @@ import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
 
 @Composable
-fun NewsScreen(viewModel: NewsViewModel, navController: NavHostController) {
+fun NewsScreen(
+  viewModel: NewsViewModel,
+  onNewsItemSelected: (news: News) -> Unit
+) {
   val newsState by viewModel.newsState.collectAsState()
   val lazyListState = rememberLazyListState()
   val screenWidth = LocalConfiguration.current.screenWidthDp.dp
@@ -58,22 +64,29 @@ fun NewsScreen(viewModel: NewsViewModel, navController: NavHostController) {
       is NewsUiState.Loading -> NewsLoading()
       is NewsUiState.Success -> {
         val newsList = (newsState as NewsUiState.Success).news
-        NewsList(newsList, lazyListState, navController)
+        NewsList(
+          newsList = newsList,
+          headerPadding = { lazyListState.firstVisibleItemScrollOffset },
+          lazyListState = lazyListState,
+          onNewsItemClicked = onNewsItemSelected
+        )
       }
 
       is NewsUiState.Error -> NewsError((newsState as NewsUiState.Error).message)
     }
 
     val isScrolled by remember { derivedStateOf { lazyListState.firstVisibleItemScrollOffset > 0 } }
+
     val appBarWidth by animateDpAsState(
       targetValue = if (isScrolled) 100.dp else screenWidth,
+      animationSpec = tween(easing = FastOutSlowInEasing),
       label = "appBarWidth"
     )
 
     NewsAppBar(
+      modifier = Modifier.width(appBarWidth),
       title = stringResource(R.string.front_page),
-      lazyListState = lazyListState,
-      appBarWidth = appBarWidth,
+      isFullWidthAppBar = { lazyListState.firstVisibleItemScrollOffset == 0 },
       isHome = true,
       onActionClick = {}
     )
@@ -100,72 +113,88 @@ fun NewsError(message: String) {
 }
 
 @Composable
-fun NewsList(newsList: List<News>, lazyListState: LazyListState, navController: NavHostController) {
+fun NewsList(
+  newsList: List<News>,
+  lazyListState: LazyListState,
+  headerPadding: () -> Int,
+  onNewsItemClicked: (news: News) -> Unit
+  ) {
   val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-  val headerPadding = remember {
-    derivedStateOf { lazyListState.firstVisibleItemScrollOffset }
-  }
+  val height by animateDpAsState(
+    targetValue = if (headerPadding() == 0) statusBarHeight + 60.dp else statusBarHeight
+  )
   LazyColumn(
     modifier = Modifier
       .fillMaxSize()
       .padding(horizontal = 16.dp)
-      .padding(
-        top =
-          if (headerPadding.value == 0)
-            statusBarHeight + 60.dp
-          else
-            statusBarHeight
-      ),
+      .padding(top = height),
     verticalArrangement = Arrangement.spacedBy(8.dp),
     state = lazyListState
   ) {
-    item { NewsHeader(newsList.first(), navController) }
-    items(newsList.drop(1)) { news -> NewsItem(navController, news) }
+    item {
+      NewsHeader(
+        news = newsList.first(),
+        onNewsHeaderClick = { onNewsItemClicked(newsList.first()) }
+      )
+    }
+    items(
+      newsList.drop(1)
+    ) { news ->
+      NewsItem(
+        news = news,
+        onClick = { onNewsItemClicked(news) }
+      )
+    }
   }
 }
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-fun NewsHeader(news: News, navController: NavHostController) {
+fun NewsHeader(
+  news: News,
+  onNewsHeaderClick: () -> Unit
+) {
   Column(
     modifier = Modifier
       .fillMaxWidth()
       .padding(top = 16.dp)
-      .clickable { navController.navigate("news_detail/${news.hashCode()}") },
+      .clickable { onNewsHeaderClick() },
   ) {
-    GlideImage(
-      modifier = Modifier.height(300.dp),
-      model = news.imageUrl,
-      contentDescription = null,
-      contentScale = ContentScale.Crop
-    )
-    Spacer(
-      modifier = Modifier.height(8.dp)
-    )
-    Text(
-      text = news.publishedAt?.timeElapsed().orEmpty(), fontSize = 16.sp, color = Color.Gray
-    )
-    Spacer(
-      modifier = Modifier.height(8.dp)
-    )
-    Text(
-      text = news.title.orEmpty(),
-      fontWeight = FontWeight.Normal,
-      fontSize = 18.sp
-    )
-    Spacer(
-      modifier = Modifier.height(16.dp)
-    )
-    HorizontalDivider(
-      color = Color.LightGray.copy(alpha = 0.5f)
-    )
+    Column(
+      verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+      GlideImage(
+        modifier = Modifier.height(300.dp),
+        model = news.imageUrl,
+        contentDescription = null,
+        contentScale = ContentScale.Crop
+      )
+      Text(
+        text = news.publishedAt?.timeElapsed().orEmpty(), fontSize = 16.sp, color = Color.Gray
+      )
+      Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+      ) {
+        Text(
+          text = news.title.orEmpty(),
+          fontWeight = FontWeight.Normal,
+          fontSize = 18.sp
+        )
+        HorizontalDivider(
+          color = Color.LightGray.copy(alpha = 0.5f)
+        )
+      }
+    }
   }
 }
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-fun NewsItem(navController: NavHostController, news: News) {
-  Column(modifier = Modifier.clickable { navController.navigate("news_detail/${news.hashCode()}") }) {
+fun NewsItem(
+  news: News,
+  onClick: () -> Unit
+) {
+  Column(modifier = Modifier.clickable { onClick() }) {
     Row(verticalAlignment = Alignment.CenterVertically) {
       Column(modifier = Modifier.weight(1f)) {
         Text(
