@@ -21,9 +21,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -42,7 +42,6 @@ import com.appsolutely.newsapp.R
 import com.appsolutely.newsapp.common.timeElapsed
 import com.appsolutely.newsapp.domain.model.News
 import com.appsolutely.newsapp.presentation.ui.components.NewsAppBar
-import com.appsolutely.newsapp.presentation.ui.views.LineSeparator
 import com.appsolutely.newsapp.presentation.viewmodel.NewsUiState
 import com.appsolutely.newsapp.presentation.viewmodel.NewsViewModel
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
@@ -50,145 +49,150 @@ import com.bumptech.glide.integration.compose.GlideImage
 
 @Composable
 fun NewsScreen(viewModel: NewsViewModel, navController: NavHostController) {
-    val newsState by viewModel.newsState.collectAsState()
-    val lazyListState = rememberLazyListState()
-    val screenWidth = LocalConfiguration.current.screenWidthDp.dp
+  val newsState by viewModel.newsState.collectAsState()
+  val lazyListState = rememberLazyListState()
+  val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        when (newsState) {
-            is NewsUiState.Loading -> NewsLoading()
-            is NewsUiState.Success -> {
-                val newsList = (newsState as NewsUiState.Success).news
-                NewsList(newsList, lazyListState, navController)
-            }
-            is NewsUiState.Error -> NewsError((newsState as NewsUiState.Error).message)
-        }
+  Box(modifier = Modifier.fillMaxSize()) {
+    when (newsState) {
+      is NewsUiState.Loading -> NewsLoading()
+      is NewsUiState.Success -> {
+        val newsList = (newsState as NewsUiState.Success).news
+        NewsList(newsList, lazyListState, navController)
+      }
 
-        val isScrolled by remember { derivedStateOf { lazyListState.firstVisibleItemScrollOffset > 0 } }
-        val appBarWidth by animateDpAsState(
-            targetValue = if (isScrolled) 100.dp else screenWidth,
-            label = "appBarWidth"
-        )
-
-        NewsAppBar(
-            title = stringResource(R.string.front_page),
-            lazyListState = lazyListState,
-            appBarWidth = appBarWidth,
-            isHome = true,
-            onActionClick = {}
-        )
+      is NewsUiState.Error -> NewsError((newsState as NewsUiState.Error).message)
     }
+
+    val isScrolled by remember { derivedStateOf { lazyListState.firstVisibleItemScrollOffset > 0 } }
+    val appBarWidth by animateDpAsState(
+      targetValue = if (isScrolled) 100.dp else screenWidth,
+      label = "appBarWidth"
+    )
+
+    NewsAppBar(
+      title = stringResource(R.string.front_page),
+      lazyListState = lazyListState,
+      appBarWidth = appBarWidth,
+      isHome = true,
+      onActionClick = {}
+    )
+  }
 }
 
 @Composable
 fun NewsLoading() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator()
-    }
+  Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+    CircularProgressIndicator()
+  }
 }
 
 @Composable
 fun NewsError(message: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(text = message, color = Color.Red, fontSize = 18.sp)
-    }
+  Box(
+    modifier = Modifier
+      .fillMaxSize()
+      .padding(horizontal = 16.dp),
+    contentAlignment = Alignment.Center
+  ) {
+    Text(text = message, color = Color.Red, fontSize = 18.sp)
+  }
 }
 
 @Composable
 fun NewsList(newsList: List<News>, lazyListState: LazyListState, navController: NavHostController) {
-    val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val headerPadding = remember {
-        derivedStateOf { lazyListState.firstVisibleItemScrollOffset }
-    }
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .padding(
-                top =
-                if (headerPadding.value == 0)
-                    statusBarHeight + 60.dp
-                else
-                    statusBarHeight
-            ),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        state = lazyListState
-    ) {
-        item { NewsHeader(newsList.first(), navController) }
-        items(newsList.drop(1)) { news -> NewsItem(navController, news) }
-    }
+  val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+  val headerPadding = remember {
+    derivedStateOf { lazyListState.firstVisibleItemScrollOffset }
+  }
+  LazyColumn(
+    modifier = Modifier
+      .fillMaxSize()
+      .padding(horizontal = 16.dp)
+      .padding(
+        top =
+          if (headerPadding.value == 0)
+            statusBarHeight + 60.dp
+          else
+            statusBarHeight
+      ),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
+    state = lazyListState
+  ) {
+    item { NewsHeader(newsList.first(), navController) }
+    items(newsList.drop(1)) { news -> NewsItem(navController, news) }
+  }
 }
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun NewsHeader(news: News, navController: NavHostController) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp)
-            .clickable { navController.navigate("news_detail/${news.hashCode()}") },
-    ) {
-        GlideImage(
-            modifier = Modifier.height(300.dp),
-            model = news.imageUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop
-        )
-        Spacer(
-            modifier = Modifier.height(8.dp)
-        )
-        Text(
-            text = news.publishedAt?.timeElapsed().orEmpty(), fontSize = 16.sp, color = Color.Gray
-        )
-        Spacer(
-            modifier = Modifier.height(8.dp)
-        )
-        Text(
-            text = news.title.orEmpty(),
-            fontWeight = FontWeight.Normal,
-            fontSize = 18.sp
-        )
-        Spacer(
-            modifier = Modifier.height(16.dp)
-        )
-        LineSeparator()
-    }
+  Column(
+    modifier = Modifier
+      .fillMaxWidth()
+      .padding(top = 16.dp)
+      .clickable { navController.navigate("news_detail/${news.hashCode()}") },
+  ) {
+    GlideImage(
+      modifier = Modifier.height(300.dp),
+      model = news.imageUrl,
+      contentDescription = null,
+      contentScale = ContentScale.Crop
+    )
+    Spacer(
+      modifier = Modifier.height(8.dp)
+    )
+    Text(
+      text = news.publishedAt?.timeElapsed().orEmpty(), fontSize = 16.sp, color = Color.Gray
+    )
+    Spacer(
+      modifier = Modifier.height(8.dp)
+    )
+    Text(
+      text = news.title.orEmpty(),
+      fontWeight = FontWeight.Normal,
+      fontSize = 18.sp
+    )
+    Spacer(
+      modifier = Modifier.height(16.dp)
+    )
+    HorizontalDivider(
+      color = Color.LightGray.copy(alpha = 0.5f)
+    )
+  }
 }
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun NewsItem(navController: NavHostController, news: News) {
-    Column(modifier = Modifier.clickable { navController.navigate("news_detail/${news.hashCode()}") }) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = news.publishedAt.orEmpty().timeElapsed(),
-                    fontSize = 18.sp,
-                    color = Color.Gray
-                )
-                Text(
-                    text = news.title.orEmpty(),
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 18.sp,
-                    maxLines = 2
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            GlideImage(
-                modifier = Modifier.size(90.dp),
-                model = news.imageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop
-            )
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-        LineSeparator()
+  Column(modifier = Modifier.clickable { navController.navigate("news_detail/${news.hashCode()}") }) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+      Column(modifier = Modifier.weight(1f)) {
+        Text(
+          text = news.publishedAt.orEmpty().timeElapsed(),
+          fontSize = 18.sp,
+          color = Color.Gray
+        )
+        Text(
+          text = news.title.orEmpty(),
+          fontWeight = FontWeight.Normal,
+          fontSize = 18.sp,
+          maxLines = 2
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+      }
+      Spacer(modifier = Modifier.width(8.dp))
+      GlideImage(
+        modifier = Modifier.size(90.dp),
+        model = news.imageUrl,
+        contentDescription = null,
+        contentScale = ContentScale.Crop
+      )
     }
+    Spacer(modifier = Modifier.height(16.dp))
+    HorizontalDivider(
+      color = Color.LightGray.copy(alpha = 0.5f)
+    )
+  }
 }
 
